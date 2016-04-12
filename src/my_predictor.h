@@ -63,7 +63,13 @@ class pm_update : public branch_update {
 	unsigned short int tag;
 	bool usedGlobal;
 };
-
+/*
+	*	Global Predictor Structure
+	*	This holds:
+	*		2 bit predictor (pred)
+	*		tag
+	*		lastUsed Counter (lastused)
+*/
 struct GlobalPred {
 	char lastused;
 	char pred;
@@ -71,29 +77,32 @@ struct GlobalPred {
 };
 
 class pm_predictor : public branch_predictor {
-	#define GLOBAL_WAYS 4
-	#define GLOBAL_ROWS 512
-	#define HISTORY_LENGTH	15
+	#define GLOBAL_WAYS 4       // Ways in the global predictor
+	#define GLOBAL_ROWS 512     // Rows in the global predictor
+	//	#define HISTORY_LENGTH	15  // Gshare history length
 	
 	public:
-	char bimodal[4096];
-	branch_info bi;
-	pm_update u;
-	unsigned bimodal_mask;
-	unsigned index_mask;
-	unsigned tag_mask;
-	unsigned int history;
+	char bimodal[4096];    // Bimodal predictor table
+	branch_info bi;        // Branch info for the current branch
+	pm_update u;           // Branch update info
+	unsigned bimodal_mask; // Bimodal binary mask to get the index for the predictor
+	unsigned index_mask;   // Binary mask for the index portion of the hash
+	unsigned tag_mask;     // Binary mask for the tag portion of the hash
+	unsigned int history;  // Global history (PIR)
 	
+	// Binary masks for use in the PIR update function
 	unsigned pir_update_mask;
 	unsigned ip_pir_update_mask;
 	unsigned pir_mask;
 	
+	// Binary masks for use in the hash function
 	unsigned hash_ip_mask_a;
 	unsigned hash_ip_mask_b;
+	unsigned hash_ip_mask_c;
 	unsigned hash_pir_mask_a;
 	unsigned hash_pir_mask_b;
 	unsigned hash_taken_mask;
-	unsigned hash_ip_mask_c;
+	
 	
 	GlobalPred global_predictor[GLOBAL_WAYS][GLOBAL_ROWS];
 	
@@ -108,23 +117,27 @@ class pm_predictor : public branch_predictor {
 				global_predictor[i][j].tag = 0;
 			}
 		}
+		// Create general masks
 		index_mask = createMask(6,14);
 		bimodal_mask = createMask(0,11);
 		tag_mask = createMask(0,5);
+		
+		// Create PIR masks
 		pir_update_mask = createMask(0,12);
 		ip_pir_update_mask = createMask(4,18);
 		pir_mask = createMask(0,14);
-	hash_ip_mask_a = createMask(13,18);
-	hash_ip_mask_b = createMask(4,12);
-	hash_pir_mask_a = createMask(0,5);
-	hash_pir_mask_b = createMask(6,14);
-	hash_taken_mask = createMask(0,5);
-	hash_ip_mask_c  = createMask(10,18);
-
+		
+		// Create Hash masks
+		hash_ip_mask_a = createMask(13,18);
+		hash_ip_mask_b = createMask(4,12);
+		hash_ip_mask_c  = createMask(10,18);
+		hash_pir_mask_a = createMask(0,5);
+		hash_pir_mask_b = createMask(6,14);
+		hash_taken_mask = createMask(0,5);
 	} // END OF CONSTRUCTOR
 	
 	char getPred(unsigned short int tag, unsigned index) {
-		assert(index < GLOBAL_ROWS);
+		assert(index < GLOBAL_ROWS); // if the index value is greater than the number of rows, something has seriously gone wrong
 		
 		for (int i = 0; i < GLOBAL_WAYS; i++) {
 			if (global_predictor[i][index].tag == tag) {
@@ -147,29 +160,18 @@ class pm_predictor : public branch_predictor {
 	branch_update *predict (branch_info & b) {
 		bi = b;
 		unsigned result = bimodal_mask & b.address;
-		//	std::cout << result << std::endl;
-		assert(result < 4096);
+		assert(result < 4096); // if the index value is greater than the number of rows, something has seriously gone wrong
 		// predict branch outcome
 		if (b.br_flags & BR_CONDITIONAL) {
 			unsigned  hash = ((((b.address & hash_ip_mask_a)>>13) ^ (history & hash_pir_mask_a) )<<9) + (((b.address & hash_ip_mask_b)>>4)^((history & hash_pir_mask_b)>>6));
-			//u.index = (history) ^ (b.address);
-//	hash_ip_mask_a = createMask(13,18);
-//	hash_ip_mask_b = createMask(0,5);
-//	hash_pir_mask_a = createMask(4,12);
-//	hash_pir_mask_b = createMask(6,14);
-			
+			//u.index = (history) ^ (b.address); // Gshare stuff			
 			
 			u.index = (index_mask & hash) >> 6;
-			//std::cout << "INDEX " << (index_mask & hash) << std::endl;
-			//std::cout << "INDEX " << u.index << " SHIFTED 6 DIGITS" <<  std::endl;
 			u.tag = tag_mask & hash;
-			//std::cout << hash << std::endl;
-			//std::cout << u.tag << std::endl;
 			char globalPred = getPred(u.tag, u.index);
 			
 			if (globalPred < 5) { // USING THE GLOBAL PREDICTOR
 				u.usedGlobal = true;
-				//std::cout << "GLOBAL PREDICTOR HIT" << std::endl;
 				if (globalPred >= 2) {
 					u.direction_prediction(true);
 				}
@@ -199,12 +201,9 @@ class pm_predictor : public branch_predictor {
 	} // END OF BRANCH PREDICT
 	
 	void update (branch_update *u, bool taken, unsigned int target) {
-	
+		
 		history = ((history & pir_update_mask) << 2 ) ^ ((BR_CONDITIONAL*(bi.address & ip_pir_update_mask)) | (BR_INDIRECT*((bi.address & hash_ip_mask_c >> 5) + (target & hash_taken_mask))));
-//	hash_taken_mask = createMask(0,5);
-//	hash_ip_mask_c  = createMask(10,18);
-
-	
+		
 		if (bi.br_flags & BR_CONDITIONAL) {
 			unsigned index = ((pm_update*)u)->index;
 			unsigned short int tag = ((pm_update*)u)->tag;
@@ -224,9 +223,6 @@ class pm_predictor : public branch_predictor {
  			//history <<= 1;
 			//history |= taken;
 			//history &= (1<<HISTORY_LENGTH)-1;
-//unsigned pir_update_mask;
-//unsigned ip_pir_update_mask;
-//unsigned pir_mask;
 			//history = ((history & pir_update_mask) << 2 ) ^ ((bi.address & ip_pir_update_mask)>>4);
 			
 			//std::cout << tag << std::endl;
@@ -246,10 +242,9 @@ class pm_predictor : public branch_predictor {
 								global_predictor[i][index].pred--;
 							}
 						}
-						if (global_predictor[i][index].lastused < 4) {
+						if (global_predictor[i][index].lastused < 5) {
 							global_predictor[i][index].lastused++;
 						}
-						//std::cout << "UPDATED A GLOBAL PREDICTOR" << std::endl;
 						break;
 					}
 				}
@@ -260,11 +255,10 @@ class pm_predictor : public branch_predictor {
 					if (global_predictor[i][index].lastused > 0) {
 						global_predictor[i][index].lastused--;
 					}
-					if (global_predictor[i][index].lastused <= 0 && !swap) {  // lastUsed is zero, use it
+					else if (global_predictor[i][index].lastused <= 0 && !swap) {  // lastUsed is zero, use it
 						global_predictor[i][index].tag = tag;
-						global_predictor[i][index].pred = 2;
+						global_predictor[i][index].pred = bimodal[result];
 						global_predictor[i][index].lastused++;
-						//std::cout << "UPDATED A GLOBAL PREDICTOR" << std::endl;
 						swap=true;
 					}
 				}
