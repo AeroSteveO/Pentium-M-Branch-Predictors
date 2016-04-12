@@ -256,9 +256,9 @@ class pm_predictor : public branch_predictor {
 						global_predictor[i][index].lastused--;
 					}
 					else if (global_predictor[i][index].lastused <= 0 && !swap) {  // lastUsed is zero, use it
-						global_predictor[i][index].tag = tag;
-						global_predictor[i][index].pred = bimodal[result];
-						global_predictor[i][index].lastused++;
+						global_predictor[i][index].tag = tag; // update the tag
+						global_predictor[i][index].pred = bimodal[result]; // use the bimodal predictor as the base predictor for the new global predictor
+						global_predictor[i][index].lastused = 5; // reset the most used policy to max
 						swap=true;
 					}
 				}
