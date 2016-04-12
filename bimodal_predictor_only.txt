@@ -1,0 +1,21 @@
+traces/164.gzip/gzip.trace.bz2          	15.030
+traces/175.vpr/vpr.trace.bz2            	14.671
+traces/176.gcc/gcc.trace.bz2            	19.347
+traces/181.mcf/mcf.trace.bz2            	33.245
+traces/186.crafty/crafty.trace.bz2      	13.075
+traces/197.parser/parser.trace.bz2      	15.417
+traces/201.compress/compress.trace.bz2  	9.356
+traces/202.jess/jess.trace.bz2          	8.809
+traces/205.raytrace/raytrace.trace.bz2  	3.806
+traces/209.db/db.trace.bz2              	6.480
+traces/213.javac/javac.trace.bz2        	3.181
+traces/222.mpegaudio/mpegaudio.trace.bz2	3.154
+traces/227.mtrt/mtrt.trace.bz2          	3.706
+traces/228.jack/jack.trace.bz2          	7.691
+traces/252.eon/eon.trace.bz2            	9.405
+traces/253.perlbmk/perlbmk.trace.bz2    	5.955
+traces/254.gap/gap.trace.bz2            	9.675
+traces/255.vortex/vortex.trace.bz2      	1.916
+traces/256.bzip2/bzip2.trace.bz2        	0.112
+traces/300.twolf/twolf.trace.bz2        	21.942
+average MPKI: 10.298
