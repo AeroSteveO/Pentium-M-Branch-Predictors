@@ -253,7 +253,7 @@ class pm_predictor : public branch_predictor {
 				bool swap = false;
 				for (int i = 0; i < GLOBAL_WAYS; i++) {
 					if (global_predictor[i][index].lastused > 0) {
-						global_predictor[i][index].lastused--;
+						global_predictor[i][index].lastused--; // all misses, reduce them all
 					}
 					else if (global_predictor[i][index].lastused <= 0 && !swap) {  // lastUsed is zero, use it
 						global_predictor[i][index].tag = tag; // update the tag
@@ -293,5 +293,3 @@ class cpm_predictor : public branch_predictor {
 	}
 	
 };
-
-
